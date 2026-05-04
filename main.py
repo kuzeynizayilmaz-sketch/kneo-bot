@@ -24,8 +24,28 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 BANNED_WORDS = [
-    "aptal", "salak", "gerizekalı", "mal",
-    "idiot", "stupid", "fuck", "shit",
+    # Türkçe küfürler
+    "aptal", "salak", "gerizekalı", "gerize kalı", "mal", "orospu", "orospu çocuğu",
+    "oç", "piç", "piç kurusu", "amk", "amına", "amına koyayım", "siktir",
+    "siktirgit", "götü", "ibne", "oğlum", "sürtük", "fahişe", "kaltak",
+    "kahpe", "s.k", "a.q", "o.ç", "p.ç", "s.ktir", "göt", "bok",
+    "boktan", "yarrak", "yarak", "orospu", "kancık", "şerefsiz", "alçak",
+    "haysiyetsiz", "namussuz", "adi", "aşağılık", "it", "köpek", "eşek",
+    "eşşek", "serseri", "katil", "beyinsiz", "dangalak", "dingil",
+    "geri zekalı", "gerzek", "hıyar", "götveren", "orosbuçocuğu",
+    # Almanca Schimpfwörter
+    "scheiße", "scheisse", "scheiß", "arschloch", "arsch", "wichser",
+    "hurensohn", "hure", "idiot", "vollidiot", "depp", "trottel",
+    "blödmann", "blöd", "fick", "ficken", "verdammt", "mist",
+    "dummkopf", "spinner", "schwachkopf", "wichse", "schlampe",
+    "fotze", "penner", "bastard", "dreckig", "dreckskerl",
+    # İngilizce
+    "fuck", "fucking", "fucker", "shit", "bullshit", "bitch",
+    "asshole", "ass", "bastard", "damn", "cunt", "dick", "cock",
+    "pussy", "whore", "slut", "idiot", "moron", "stupid", "retard",
+    # Spam
+    "spam", "reklam", "kazan", "para kazan", "ücretsiz kazan",
+    "bitcoin", "kripto kazan", "bedava para",
 ]
 
 DATA_FILE = Path("kneo_data.json")
@@ -44,8 +64,16 @@ def save_data(d):
 data = load_data()
 
 def is_bad(text: str) -> bool:
+    # Normalize text - remove spaces between letters for evasion attempts
     t = text.lower()
-    return any(w in t for w in BANNED_WORDS)
+    t_nospace = t.replace(" ", "").replace(".", "").replace("*", "").replace("_", "")
+    for w in BANNED_WORDS:
+        w_clean = w.replace(" ", "")
+        if w_clean in t_nospace:
+            return True
+        if w in t:
+            return True
+    return False
 
 async def check_admin(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> bool:
     try:
