@@ -145,9 +145,15 @@ async def on_member_join(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     try:
         await ctx.bot.send_message(
             result.chat.id,
-            f"👋 *Hoş geldin, {user.first_name}!*\n\n"
-            f"*{result.chat.title}* grubuna katıldın 🎉\n\n"
-            f"📋 /kurallar  |  🌐 kneo-community.com",
+            f"🌐 www.kneo-community.com\n\n"
+            f"*HOŞ GELDİN {user.first_name}!* 👋\n\n"
+            f"➪ DM'den rahatsız etmek yok\n"
+            f"➪ Hassas + argo konular yasak\n"
+            f"➪ Saygı şart\n\n"
+            f"🔒 *Filtre sistemi aktif*\n"
+            f"Küfür eden, reklam yapan ve uygunsuz içerik paylaşanlar "
+            f"otomatik olarak bloklanır.\n\n"
+            f"_Kurallara uy, gerisi serbest_ ✅",
             parse_mode="Markdown"
         )
         logger.info(f"Welcomed {user.full_name}")
