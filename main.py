@@ -3,7 +3,7 @@
 KNEO Community Bot – kneo-community.com
 Otomatik link yönetimi + moderasyon
 """
-
+ 
 import logging, re, json, asyncio
 from pathlib import Path
 from datetime import datetime, timedelta
@@ -13,40 +13,40 @@ from telegram.ext import (
     ChatMemberHandler, filters, ContextTypes,
 )
 from telegram.error import TelegramError
-
+ 
 BOT_TOKEN = "8502930539:AAF_jpNsVR4Xhsq2d3uTRtRHntdmMGe2Mbw"
-
+ 
 logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(message)s",
     level=logging.INFO
 )
 logger = logging.getLogger(__name__)
-
+ 
 # ── Dosyalar ────────────────────────────────────────
 LINKS_FILE = Path("group_links.json")
 DATA_FILE  = Path("kneo_data.json")
-
+ 
 def load_links():
     if LINKS_FILE.exists():
         try: return json.loads(LINKS_FILE.read_text())
         except: pass
     return {}
-
+ 
 def save_links(links):
     LINKS_FILE.write_text(json.dumps(links, ensure_ascii=False, indent=2))
-
+ 
 def load_data():
     if DATA_FILE.exists():
         try: return json.loads(DATA_FILE.read_text())
         except: pass
     return {"warnings": {}, "members": {}}
-
+ 
 def save_data(d):
     DATA_FILE.write_text(json.dumps(d, ensure_ascii=False, indent=2))
-
+ 
 group_links = load_links()
 data = load_data()
-
+ 
 # ── Yasaklı kelimeler ────────────────────────────────
 BANNED_WORDS = [
     # Türkçe
@@ -64,26 +64,26 @@ BANNED_WORDS = [
     # Spam
     "reklam","kazan","para kazan","ücretsiz kazan","kripto kazan","bedava para",
 ]
-
+ 
 def is_bad(text: str) -> bool:
     t = text.lower().replace(" ","").replace(".","").replace("*","")
     return any(w.replace(" ","") in t for w in BANNED_WORDS)
-
+ 
 async def is_admin(update: Update, ctx: ContextTypes.DEFAULT_TYPE) -> bool:
     try:
         m = await update.effective_chat.get_member(update.effective_user.id)
         return m.status in [ChatMember.ADMINISTRATOR, ChatMember.OWNER]
     except: return False
-
+ 
 def add_warn(chat_id, user_id):
     ck, uk = str(chat_id), str(user_id)
     data["warnings"].setdefault(ck, {})
     data["warnings"][ck][uk] = data["warnings"][ck].get(uk, 0) + 1
     save_data(data)
     return data["warnings"][ck][uk]
-
+ 
 # ── Otomatik Link Yönetimi ───────────────────────────
-
+ 
 async def create_invite_link(ctx, chat_id: int) -> str | None:
     """Kalıcı davet linki oluştur veya mevcut olanı döndür."""
     chat_key = str(chat_id)
@@ -116,9 +116,9 @@ async def create_invite_link(ctx, chat_id: int) -> str | None:
     except TelegramError as e:
         logger.error(f"Link oluşturma hatası ({chat_id}): {e}")
         return None
-
+ 
 # ── Komutlar ────────────────────────────────────────
-
+ 
 async def cmd_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     chat = update.effective_chat
     if chat.type == "private":
@@ -139,7 +139,7 @@ async def cmd_start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         if invite:
             msg += f"\n🔗 Davet linki: {invite}"
         await update.message.reply_text(msg)
-
+ 
 async def cmd_link(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     """Grubun davet linkini göster veya oluştur."""
     chat = update.effective_chat
@@ -157,7 +157,7 @@ async def cmd_link(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(
             "❌ Link oluşturulamadı. Bot admin yetkisi var mı?"
         )
-
+ 
 async def cmd_links_all(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     """Tüm grup linklerini listele (sadece özel mesajda)."""
     if update.effective_chat.type != "private":
@@ -177,7 +177,7 @@ async def cmd_links_all(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             await update.message.reply_text(part, parse_mode="Markdown")
     else:
         await update.message.reply_text(msg, parse_mode="Markdown")
-
+ 
 async def cmd_export(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     """Linkleri JSON dosyası olarak gönder."""
     if update.effective_chat.type != "private":
@@ -194,7 +194,7 @@ async def cmd_export(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         filename="kneo_group_links.json",
         caption=f"📥 {len(group_links)} grup linki"
     )
-
+ 
 async def cmd_kurallar(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "📋 *KNEO Grup Kuralları*\n\n"
@@ -208,7 +208,7 @@ async def cmd_kurallar(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
         "🌐 kneo-community.com",
         parse_mode="Markdown"
     )
-
+ 
 async def cmd_warn(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if not await is_admin(update, ctx): return
     if not update.message.reply_to_message:
@@ -217,43 +217,58 @@ async def cmd_warn(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     target = update.message.reply_to_message.from_user
     count = add_warn(update.effective_chat.id, target.id)
     await do_warning(ctx, update.effective_chat, target, count, "Admin uyarısı")
-
+ 
 async def cmd_ban(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if not await is_admin(update, ctx): return
     if not update.message.reply_to_message: return
     target = update.message.reply_to_message.from_user
     await update.effective_chat.ban_member(target.id)
     await update.message.reply_text(f"🔨 {target.full_name} banlandı.")
-
+ 
 async def cmd_unban(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     if not await is_admin(update, ctx): return
     if not update.message.reply_to_message: return
     target = update.message.reply_to_message.from_user
     await update.effective_chat.unban_member(target.id)
     await update.message.reply_text(f"✅ {target.full_name} banı kaldırıldı.")
-
+ 
 # ── Yeni üye karşılama ───────────────────────────────
-
+ 
 async def on_member_join(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     result = update.chat_member
     new_member = result.new_chat_member
-
+ 
     # Bot eklendiğinde otomatik link oluştur
     if new_member.user.id == ctx.bot.id:
         logger.info(f"Bot gruba eklendi: {result.chat.title}")
         await asyncio.sleep(2)
         await create_invite_link(ctx, result.chat.id)
         return
-
-    if new_member.status != "member":
+ 
+    if new_member.status not in ("member", "administrator"):
         return
-
+ 
     user = new_member.user
-    invite = group_links.get(str(result.chat.id), {}).get("link", "")
-
+    await send_welcome(ctx, result.chat.id, user)
+ 
+ 
+async def on_new_member_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
+    """Fallback: new_chat_members message event"""
+    msg = update.message
+    if not msg or not msg.new_chat_members:
+        return
+    for user in msg.new_chat_members:
+        if user.id == ctx.bot.id:
+            await asyncio.sleep(2)
+            await create_invite_link(ctx, msg.chat.id)
+            continue
+        await send_welcome(ctx, msg.chat.id, user)
+ 
+ 
+async def send_welcome(ctx, chat_id: int, user):
     try:
         await ctx.bot.send_message(
-            result.chat.id,
+            chat_id,
             f"🌐 www.kneo-community.com\n\n"
             f"*HOŞ GELDİN {user.first_name}!* 👋\n\n"
             f"➪ DM'den rahatsız etmek yok\n"
@@ -265,24 +280,24 @@ async def on_member_join(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
             f"_Kurallara uy, gerisi serbest_ ✅",
             parse_mode="Markdown"
         )
-        logger.info(f"Welcomed {user.full_name} in {result.chat.title}")
+        logger.info(f"Welcomed {user.full_name} in chat {chat_id}")
     except Exception as e:
         logger.error(f"Welcome error: {e}")
-
+ 
 # ── Mesaj denetimi ───────────────────────────────────
-
+ 
 async def on_message(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
     msg = update.message
     if not msg or not msg.from_user: return
     if await is_admin(update, ctx): return
-
+ 
     text = msg.text or msg.caption or ""
     if text and is_bad(text):
         try: await msg.delete()
         except: pass
         count = add_warn(update.effective_chat.id, msg.from_user.id)
         await do_warning(ctx, update.effective_chat, msg.from_user, count, "küfür/spam")
-
+ 
 async def do_warning(ctx, chat, user, count: int, reason: str):
     try:
         if count >= 5:
@@ -303,15 +318,15 @@ async def do_warning(ctx, chat, user, count: int, reason: str):
                 parse_mode="Markdown")
     except Exception as e:
         logger.error(f"Warning error: {e}")
-
+ 
 # ── Ana ──────────────────────────────────────────────
-
+ 
 def main():
     logger.info("🚀 KNEO Bot başlatılıyor...")
     logger.info(f"📋 Kayıtlı link sayısı: {len(group_links)}")
-
+ 
     app = ApplicationBuilder().token(BOT_TOKEN).build()
-
+ 
     app.add_handler(CommandHandler("start",    cmd_start))
     app.add_handler(CommandHandler("link",     cmd_link))
     app.add_handler(CommandHandler("links",    cmd_links_all))
@@ -323,11 +338,13 @@ def main():
     app.add_handler(CommandHandler("unban",    cmd_unban))
     app.add_handler(MessageHandler(
         filters.TEXT | filters.PHOTO | filters.Document.ALL, on_message))
+    app.add_handler(MessageHandler(
+        filters.StatusUpdate.NEW_CHAT_MEMBERS, on_new_member_message))
     app.add_handler(ChatMemberHandler(
         on_member_join, ChatMemberHandler.CHAT_MEMBER))
-
+ 
     logger.info("✅ KNEO Bot aktif!")
     app.run_polling(allowed_updates=Update.ALL_TYPES, drop_pending_updates=True)
-
+ 
 if __name__ == "__main__":
     main()
